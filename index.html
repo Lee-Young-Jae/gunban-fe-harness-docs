@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gunban 하네스 구조 — v2</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --bg-card: #18181b;
+    --bg-elev: #1f1f23;
+    --border: #2a2a30;
+    --text: #e8e8eb;
+    --text-dim: #8e8e94;
+    --text-mute: #5c5c63;
+    --accent: #f5b800;
+    --accent-dim: #c89800;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+    --orange: #fb923c;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--bg-elev); padding: 0.1em 0.4em; border-radius: 3px; color: var(--accent); }
+  pre { font-family: var(--mono); font-size: 0.85em; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; overflow-x: auto; color: var(--text); }
+  pre code { background: transparent; padding: 0; color: inherit; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } }
+
+  /* TOC */
+  .toc { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 28px 20px 28px 28px; border-right: 1px solid var(--border); background: var(--bg); }
+  .toc-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 14px; font-weight: 600; }
+  .toc-title:not(:first-child) { margin-top: 22px; }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+  .toc li { counter-increment: toc; margin-bottom: 4px; }
+  .toc li a { display: block; padding: 5px 8px 5px 22px; border-radius: 4px; color: var(--text-dim); font-size: 13px; position: relative; }
+  .toc li a::before { content: counter(toc) "."; position: absolute; left: 4px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
+  .toc li a:hover { background: var(--bg-elev); color: var(--text); text-decoration: none; }
+  .toc li a.active { background: var(--bg-elev); color: var(--accent); border-left: 2px solid var(--accent); padding-left: 20px; }
+
+  /* Main */
+  .main { padding: 36px 56px 80px; max-width: 920px; }
+  .header { padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 36px; }
+  .header h1 { margin: 0 0 8px; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .header h1 .v { color: var(--accent); font-weight: 500; font-size: 0.7em; vertical-align: 1px; margin-left: 8px; }
+  .header .subtitle { color: var(--text-dim); font-size: 14px; }
+  .meta-row { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .meta { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+  .meta strong { color: var(--text); font-weight: 600; }
+
+  section { margin-bottom: 56px; scroll-margin-top: 20px; }
+  section h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  section h2 .num { color: var(--text-mute); font-variant-numeric: tabular-nums; margin-right: 10px; font-weight: 400; }
+  section h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; }
+  section h4 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: var(--text); }
+  section p { margin: 8px 0; color: var(--text); }
+  section ul, section ol { margin: 8px 0; padding-left: 22px; }
+  section li { margin-bottom: 4px; }
+
+  /* Card grid */
+  .cards { display: grid; gap: 12px; margin: 14px 0; }
+  .cards.two { grid-template-columns: 1fr 1fr; }
+  .cards.three { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .cards.two, .cards.three { grid-template-columns: 1fr; } }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; }
+  .card h4 { margin-top: 0; display: flex; align-items: center; gap: 8px; }
+  .card-tag { display: inline-block; font-size: 10px; font-family: var(--mono); padding: 2px 6px; border-radius: 3px; background: var(--bg-elev); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-tag.opus { background: rgba(192, 132, 252, 0.15); color: var(--purple); }
+  .card-tag.haiku { background: rgba(96, 165, 250, 0.15); color: var(--blue); }
+  .card-tag.greenfield { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .card-tag.patch { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .card-tag.redesign { background: rgba(245, 184, 0, 0.15); color: var(--accent); }
+  .card-tag.refine { background: rgba(251, 146, 60, 0.15); color: var(--orange); }
+  .card-tag.shared { background: rgba(232, 232, 235, 0.08); color: var(--text-dim); }
+  .card .role { color: var(--text-dim); font-size: 13px; margin-bottom: 8px; }
+  .card .io { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+  .card .io .label { color: var(--text-mute); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg-card); }
+  td code { font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Pipeline diagram container */
+  .mermaid-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 16px 0; overflow-x: auto; }
+  .mermaid { background: transparent !important; min-width: 320px; }
+
+  /* Pipeline summary card */
+  .pipeline-hdr { display: flex; align-items: baseline; gap: 12px; margin-top: 28px; }
+  .pipeline-hdr h3 { margin: 0; }
+  .pipeline-hdr .desc { color: var(--text-dim); font-size: 13px; }
+
+  /* File tree */
+  .tree { font-family: var(--mono); font-size: 13px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; line-height: 1.7; color: var(--text-dim); white-space: pre; overflow-x: auto; }
+  .tree .name { color: var(--text); }
+  .tree .new { color: var(--accent); }
+  .tree .cmt { color: var(--text-mute); font-style: italic; }
+
+  /* Pill list */
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .pill { display: inline-block; padding: 3px 8px; font-size: 11px; font-family: var(--mono); background: var(--bg-elev); color: var(--text-dim); border-radius: 3px; border: 1px solid var(--border); }
+
+  /* Callout */
+  .callout { padding: 14px 18px; border-left: 3px solid var(--accent); background: var(--bg-card); border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .callout.note { border-left-color: var(--blue); }
+  .callout.warn { border-left-color: var(--red); }
+  .callout-title { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; }
+  .callout.note .callout-title { color: var(--blue); }
+  .callout.warn .callout-title { color: var(--red); }
+
+  /* Footnote */
+  .fn-ref { font-size: 0.7em; vertical-align: super; margin-left: 2px; }
+  .fn-ref a { color: var(--accent); text-decoration: none; padding: 0 2px; }
+  .fn-ref a:hover { text-decoration: underline; }
+  .footnotes { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim); }
+  .footnotes-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 10px; font-weight: 600; }
+  .footnotes ol { padding-left: 24px; margin: 0; }
+  .footnotes li { margin-bottom: 8px; }
+  .footnotes li:target { background: rgba(245, 184, 0, 0.08); padding: 4px 8px; border-radius: 4px; }
+  .footnotes a.ext { color: var(--accent); word-break: break-all; }
+
+  /* Footer */
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--text-mute); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <nav class="toc">
+    <div class="toc-title">Gunban Harness v2</div>
+    <ol id="toc-list">
+      <li><a href="#overview">개요</a></li>
+      <li><a href="#architecture">아키텍처</a></li>
+      <li><a href="#entry">진입점 (dev-flow)</a></li>
+      <li><a href="#classifier">의도 분류</a></li>
+      <li><a href="#pipelines">4종 파이프라인</a></li>
+      <li><a href="#agents">에이전트 카탈로그</a></li>
+      <li><a href="#skills">스킬 카탈로그</a></li>
+      <li><a href="#scripts">스크립트</a></li>
+      <li><a href="#data-flow">데이터 흐름</a></li>
+      <li><a href="#evaluation">평가 메트릭</a></li>
+      <li><a href="#ops">운영 가이드</a></li>
+    </ol>
+    <div class="toc-title">참조</div>
+    <ol style="counter-reset: none;">
+      <li style="list-style: none; margin-left: -6px;"><a href="README.md" style="padding-left: 8px;">README.md</a></li>
+    </ol>
+  </nav>
+
+  <main class="main">
+
+    <div class="header">
+      <h1>Gunban 하네스 구조<span class="v">v2.1</span></h1>
+      <div class="subtitle">코드 작업 요청을 4종 파이프라인으로 분류·실행하는 멀티 에이전트 하네스</div>
+      <div class="meta-row">
+        <span class="meta">에이전트 <strong>8</strong></span>
+        <span class="meta">스킬 <strong>5</strong></span>
+        <span class="meta">파이프라인 <strong>4</strong></span>
+        <span class="meta">스크립트 <strong>9</strong></span>
+        <span class="meta">최종 갱신 <strong>2026-05-14</strong></span>
+      </div>
+    </div>
+
+    <!-- 1. 개요 -->
+    <section id="overview">
+      <h2><span class="num">01</span>개요</h2>
+      <p>
+        Gunban 하네스는 프론트엔드 개발 요청의 단일 진입점 <code>dev-flow</code> 스킬과,
+        그 아래 의도를 4종 파이프라인으로 분류·실행하는 멀티 에이전트 시스템이다.
+        각 작업은 슬러그 기반 워크스페이스(<code>_workspace/{date}_{slug}/</code>)에 격리되어 동시 진행이 가능하며,
+        모든 산출물은 작업 종료 시 <code>work-history/</code>로 영구 보존된다.
+      </p>
+
+      <h3>핵심 설계 원칙</h3>
+      <div class="cards two">
+        <div class="card">
+          <h4>1. 단일 진입점</h4>
+          <p class="role">모든 코드 작업 요청은 <code>dev-flow</code>를 통과한다. 직접 에이전트 호출 금지.</p>
+        </div>
+        <div class="card">
+          <h4>2. 슬러그 워크스페이스</h4>
+          <p class="role">동시 진행 가능. 각 작업이 자기 디렉토리에 격리된 산출물을 가진다.</p>
+        </div>
+        <div class="card">
+          <h4>3. Task 툴 기반 호출<span class="fn-ref"><a href="#fn1" id="fnref1">[1]</a></span></h4>
+          <p class="role"><code>claude -p</code> 서브프로세스 미사용. 캐시 절약 + 컨텍스트 격리.</p>
+        </div>
+        <div class="card">
+          <h4>4. 자동 컨텍스트 주입</h4>
+          <p class="role"><code>retrieve-context.py</code>가 prepare에서 관련 이력을 자동 검색.</p>
+        </div>
+        <div class="card">
+          <h4>5. 시각 검증 자동화</h4>
+          <p class="role">Playwright + Figma export + pixelmatch로 정량 diff. LLM의 픽셀 추측 X.</p>
+        </div>
+        <div class="card">
+          <h4>6. 승인 게이트 + 예산 가드</h4>
+          <p class="role">비싼 phase 후 체크포인트. 토큰 누적 80%/100%에서 사용자 의사결정.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 아키텍처 -->
+    <section id="architecture">
+      <h2><span class="num">02</span>아키텍처</h2>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart TB
+  user(["사용자 요청"]) --> entry["dev-flow 스킬<br/>(단일 진입점)"]
+  entry --> classify["intent-classifier<br/>(haiku)"]
+  classify -->|분류 결과| route{"파이프라인<br/>라우팅"}
+
+  route -->|신규 페이지| gf["greenfield"]
+  route -->|버그 수정| pa["patch"]
+  route -->|디자인 변경| re["redesign"]
+  route -->|작업 보정| rf["refine"]
+  route -->|코드 질문| ad["ad-hoc<br/>(파이프라인 미사용)"]
+
+  gf --> exec["phase 실행<br/>(script · agent · loop)"]
+  pa --> exec
+  re --> exec
+  rf --> exec
+
+  exec --> qa["QA + 체크포인트"]
+  qa --> archive["archive<br/>(work-history 이동)"]
+  archive --> report["최종 보고"]
+
+  classDef pipeline fill:#1f1f23,stroke:#f5b800,color:#e8e8eb;
+  classDef entryNode fill:#1f1f23,stroke:#60a5fa,color:#e8e8eb;
+  classDef terminal fill:#1f1f23,stroke:#4ade80,color:#e8e8eb;
+  class gf,pa,re,rf pipeline;
+  class entry,classify entryNode;
+  class archive,report terminal;
+</div>
+      </div>
+
+      <h3>디렉토리 구조</h3>
+<div class="tree">
+<span class="name">.claude/</span>
+├── <span class="name">README.md</span>                          <span class="cmt"># 하네스 개요</span>
+├── <span class="name">agents/</span>                            <span class="cmt"># 8 에이전트</span>
+│   ├── intent-classifier.md
+│   ├── planner.md
+│   ├── figma-analyzer.md
+│   ├── page-builder.md
+│   ├── qa-inspector.md
+│   ├── bug-locator.md           <span class="cmt"># patch</span>
+│   ├── diff-analyzer.md         <span class="cmt"># redesign</span>
+│   └── feedback-parser.md       <span class="cmt"># refine</span>
+├── <span class="name">skills/</span>
+│   ├── <span class="new">dev-flow/</span>                       <span class="cmt"># 진입 오케스트레이터</span>
+│   ├── figma-to-spec/
+│   ├── fsd-implement/
+│   ├── quality-check/
+│   ├── visual-diff/
+│   └── (외부: auto-commit, vercel-*, web-design-guidelines)
+├── <span class="name">pipelines/</span>                         <span class="cmt"># 4종 YAML</span>
+│   ├── greenfield.yaml
+│   ├── patch.yaml
+│   ├── redesign.yaml
+│   └── refine.yaml
+├── <span class="name">scripts/</span>                           <span class="cmt"># 9개 Python (stdlib + Pillow)</span>
+│   ├── parse-input.py
+│   ├── retrieve-context.py
+│   ├── archive-workspace.py
+│   ├── gate-spec.py
+│   ├── track-tokens.py
+│   ├── visual-diff.py
+│   └── summarize-{plan,spec,qa}.py
+└── <span class="name">docs/</span>
+    ├── harness-structure.html       <span class="cmt"># 본 문서</span>
+    └── work-history/
+        ├── index.md                 <span class="cmt"># 경량 검색 인덱스</span>
+        ├── tasks/{date}_{slug}/     <span class="cmt"># 영구 보존</span>
+        └── decisions/D-NNN_*.md
+
+<span class="name">_workspace/</span>                              <span class="cmt"># 진행 중 작업 (gitignore)</span>
+└── {date}_{slug}/
+    ├── 00_user_intent.md
+    ├── 00_parsed_input.json
+    ├── 00_related_context.md
+    ├── 00_plan.md
+    ├── 01_figma_spec.md
+    ├── 02_figma_diff.md
+    ├── 03_qa_report.md
+    └── token_usage.json
+</div>
+    </section>
+
+    <!-- 3. dev-flow -->
+    <section id="entry">
+      <h2><span class="num">03</span>진입점 — <code>dev-flow</code></h2>
+
+      <p>모든 개발 요청의 단일 오케스트레이터. 파이프라인 선택부터 archive까지의 흐름을 관장한다.</p>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+  s1["1. intent-classify"] --> s2["2. 사용자 확인<br/>(신뢰도 낮으면)"]
+  s2 --> s3["3. YAML 로드"]
+  s3 --> s4["4. prepare<br/>(slug 생성)"]
+  s4 --> s5["5. phase 실행<br/>(체크포인트/예산)"]
+  s5 --> s6["6. archive<br/>(사용자 확인 후)"]
+  s6 --> s7["7. 최종 보고"]
+  classDef step fill:#1f1f23,stroke:#2a2a30,color:#e8e8eb;
+  class s1,s2,s3,s4,s5,s6,s7 step;
+</div>
+      </div>
+
+      <h3>phase 실행 메커니즘</h3>
+      <table>
+        <thead>
+          <tr><th>타입</th><th>실행 방식</th><th>예시</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>script</code></td><td>Bash 툴로 Python 스크립트</td><td>parse-input.py, retrieve-context.py</td></tr>
+          <tr><td><code>agent</code></td><td>Task 툴로 서브에이전트 호출<span class="fn-ref"><a href="#fn1" id="fnref1b">[1]</a></span></td><td>planner, page-builder, qa-inspector</td></tr>
+          <tr><td><code>loop</code></td><td>body를 max_iter 반복 + until 평가</td><td>fix_loop (fix + qa_recheck)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>제어 메커니즘</h3>
+      <div class="cards two">
+        <div class="card">
+          <h4>승인 게이트</h4>
+          <p class="role">checkpoint:true phase 후 AskUserQuestion 3옵션 (진행 / 코멘트 추가 / 재작성).</p>
+        </div>
+        <div class="card">
+          <h4>예산 가드 (사후)</h4>
+          <p class="role">누적 토큰 80% 알림, 100% 의무 확인. 강제 중단 X.</p>
+        </div>
+        <div class="card">
+          <h4>fix_loop 평가</h4>
+          <p class="role">매 iter 후 summarize-qa.py JSON의 fail_count로 until 평가. max_iter 도달 시 사용자 보고.</p>
+        </div>
+        <div class="card">
+          <h4>에러 핸들링</h4>
+          <p class="role">script 실패 1회 재시도, agent 예외 사용자 보고, backpressure 1회 자기 수정 후 fix_loop.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. intent-classifier -->
+    <section id="classifier">
+      <h2><span class="num">04</span>의도 분류 — <code>intent-classifier</code></h2>
+
+      <p>haiku 모델로 빠른 분류. <code>.claude/pipelines/*.yaml</code>의 trigger 섹션을 읽고 점수 계산.</p>
+
+      <h3>의사결정 트리</h3>
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart TD
+  start(["사용자 메시지"]) --> q1{"코드 작업<br/>의도?"}
+  q1 -->|아니오| adhoc["ad-hoc"]
+  q1 -->|예| q2{"Figma URL<br/>있는가?"}
+  q2 -->|있음| q3{"기존 라우트?"}
+  q3 -->|기존| redesign["redesign"]
+  q3 -->|신규| greenfield_f["greenfield<br/>(figma)"]
+  q2 -->|없음| q4{"직전 슬러그<br/>참조 + 보정?"}
+  q4 -->|예| refine["refine"]
+  q4 -->|아니오| q5{"버그 키워드<br/>+ 기존 라우트?"}
+  q5 -->|예| patch["patch"]
+  q5 -->|아니오| greenfield_t["greenfield<br/>(text)"]
+
+  classDef leaf fill:#1f1f23,stroke:#f5b800,color:#f5b800;
+  classDef ad fill:#1f1f23,stroke:#5c5c63,color:#8e8e94;
+  class greenfield_f,greenfield_t,patch,redesign,refine leaf;
+  class adhoc ad;
+</div>
+      </div>
+
+      <h3>출력 JSON</h3>
+<pre><code>{
+  "pipeline": "greenfield|patch|redesign|refine|ad-hoc",
+  "confidence": 0.0,
+  "reasoning": "결정 근거 1-2줄",
+  "route_hint": "(product_web)/main/search 또는 null",
+  "slug_hint": "main-search-filter 또는 null",
+  "mode_hint": "figma|text|hybrid 또는 null",
+  "alternatives": ["다음 가능한 파이프라인 1-2개"],
+  "previous_slug_candidates": ["2026-05-14_xxx"],
+  "signals": {
+    "has_figma_url": true,
+    "route_exists": false,
+    "matched_keywords": ["만들어줘"],
+    "references_last_slug": false
+  }
+}</code></pre>
+
+      <h3>신뢰도별 처리</h3>
+      <table>
+        <thead><tr><th>confidence</th><th>처리</th></tr></thead>
+        <tbody>
+          <tr><td><code>≥ 0.8</code></td><td>자동 진행, 한 줄 보고</td></tr>
+          <tr><td><code>0.5 ~ 0.8</code></td><td>단일 확인 질문</td></tr>
+          <tr><td><code>&lt; 0.5</code></td><td>후보 2-3개 제시</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 5. 파이프라인 -->
+    <section id="pipelines">
+      <h2><span class="num">05</span>4종 파이프라인</h2>
+
+      <!-- greenfield -->
+      <div class="pipeline-hdr">
+        <h3>5.1 greenfield</h3>
+        <span class="card-tag greenfield">신규</span>
+        <span class="desc">신규 페이지/기능 구현 (Figma 또는 텍스트 기획)</span>
+      </div>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+  p1["prepare<br/>(parse-input)"] --> p2["retrieve_context"]
+  p2 --> p3["plan<br/>📍 planner"]
+  p3 -.->|체크포인트 1| u1(("👤"))
+  u1 -.-> p4
+  p3 --> p4{"mode<br/>== text?"}
+  p4 -->|figma/hybrid| p5["figma_analyze<br/>📍 figma-analyzer"]
+  p4 -->|text| p6
+  p5 -.->|체크포인트 2| u2(("👤"))
+  u2 -.-> p6
+  p5 --> p6["build<br/>📍 page-builder"]
+  p6 --> p7["qa<br/>📍 qa-inspector"]
+  p7 --> p8{"fail == 0?"}
+  p8 -->|예| p9["archive"]
+  p8 -->|아니오| p10["fix_loop<br/>(max 2)"]
+  p10 --> p7
+
+  classDef agent fill:#3d2f1f,stroke:#f5b800,color:#e8e8eb;
+  classDef script fill:#1f1f23,stroke:#2a2a30,color:#8e8e94;
+  classDef user fill:#1f2f1f,stroke:#4ade80,color:#4ade80;
+  class p3,p5,p6,p7,p10 agent;
+  class p1,p2,p9 script;
+  class u1,u2 user;
+</div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">예산 / 산출물</div>
+        총 토큰 1.5M · 총 시간 30분 · 산출물: <code>00_plan.md</code> · <code>01_figma_spec.md</code> · <code>03_qa_report.md</code> · 코드 <code>src/app/{route}/**</code>
+      </div>
+
+      <!-- patch -->
+      <div class="pipeline-hdr">
+        <h3>5.2 patch</h3>
+        <span class="card-tag patch">버그</span>
+        <span class="desc">기존 라우트 + 버그 수정 (디자인 변경 없음)</span>
+      </div>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+  p1["prepare"] --> p2["retrieve_context"]
+  p2 --> p3["locate<br/>📍 bug-locator"]
+  p3 -.->|체크포인트| u1(("👤"))
+  u1 -.-> p4
+  p3 --> p4["fix<br/>📍 page-builder"]
+  p4 --> p5["qa<br/>📍 qa-inspector<br/>(좁은 검증)"]
+  p5 --> p6{"fail == 0?"}
+  p6 -->|예| p7["archive"]
+  p6 -->|아니오| p8["fix_loop<br/>(max 1)"]
+  p8 --> p5
+
+  classDef agent fill:#3d1f1f,stroke:#f87171,color:#e8e8eb;
+  classDef script fill:#1f1f23,stroke:#2a2a30,color:#8e8e94;
+  classDef user fill:#1f2f1f,stroke:#4ade80,color:#4ade80;
+  class p3,p4,p5,p8 agent;
+  class p1,p2,p7 script;
+  class u1 user;
+</div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">예산 / 핵심 차이</div>
+        총 토큰 500k · 시간 15분 · <strong>bug-locator</strong>가 좁은 수정 범위 + 재현 시나리오 + 회귀 점검 영역을 명시 → page-builder가 무관 영역 손대지 않도록 가드.
+      </div>
+
+      <!-- redesign -->
+      <div class="pipeline-hdr">
+        <h3>5.3 redesign</h3>
+        <span class="card-tag redesign">디자인 변경</span>
+        <span class="desc">기존 페이지에 새 Figma 디자인 반영</span>
+      </div>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+  p1["prepare"] --> p2["retrieve_context"]
+  p2 --> p3["figma_analyze<br/>📍 figma-analyzer"]
+  p3 -.->|체크포인트 1| u1(("👤"))
+  u1 -.-> p4
+  p3 --> p4["diff_analyze<br/>📍 diff-analyzer<br/>(+ visual-diff 사전)"]
+  p4 -.->|체크포인트 2| u2(("👤"))
+  u2 -.-> p5
+  p4 --> p5["update<br/>📍 page-builder"]
+  p5 --> p6["qa<br/>📍 qa-inspector<br/>(시각 diff 중점)"]
+  p6 --> p7{"fail == 0?"}
+  p7 -->|예| p8["archive"]
+  p7 -->|아니오| p9["fix_loop<br/>(max 2)"]
+  p9 --> p6
+
+  classDef agent fill:#3d3520,stroke:#f5b800,color:#e8e8eb;
+  classDef script fill:#1f1f23,stroke:#2a2a30,color:#8e8e94;
+  classDef user fill:#1f2f1f,stroke:#4ade80,color:#4ade80;
+  class p3,p4,p5,p6,p9 agent;
+  class p1,p2,p8 script;
+  class u1,u2 user;
+</div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">예산 / 핵심 차이</div>
+        총 토큰 1.2M · <strong>diff-analyzer</strong>가 신규 spec ↔ 기존 코드 차이를 STRUCT/ADD/REMOVE/PROP/STYLE/RESP 6분류로 정리 + visual-diff 사전 호출 → page-builder가 변경 영역만 좁게 업데이트.
+      </div>
+
+      <!-- refine -->
+      <div class="pipeline-hdr">
+        <h3>5.4 refine</h3>
+        <span class="card-tag refine">보정</span>
+        <span class="desc">직전 작업 보정 (사용자 피드백 반영)</span>
+      </div>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart LR
+  p1["prepare"] --> p2["parse_feedback<br/>📍 feedback-parser"]
+  p2 -.->|체크포인트| u1(("👤"))
+  u1 -.-> p3
+  p2 --> p3["focused_fix<br/>📍 page-builder"]
+  p3 --> p4["qa<br/>📍 qa-inspector"]
+  p4 --> p5{"fail == 0?"}
+  p5 -->|예| p6["archive<br/>(refines: 명시)"]
+  p5 -->|아니오| p7["fix_loop<br/>(max 1)"]
+  p7 --> p4
+
+  classDef agent fill:#3d2920,stroke:#fb923c,color:#e8e8eb;
+  classDef script fill:#1f1f23,stroke:#2a2a30,color:#8e8e94;
+  classDef user fill:#1f2f1f,stroke:#4ade80,color:#4ade80;
+  class p2,p3,p4,p7 agent;
+  class p1,p6 script;
+  class u1 user;
+</div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">예산 / 핵심 차이</div>
+        총 토큰 700k · <strong>feedback-parser</strong>가 사용자 피드백을 DESIGN/BEHAVIOR/COPY/LAYOUT/RESP/MISSING/EXTRA 카테고리로 분해 + 직전 task 컨텍스트와 매핑. task.md frontmatter에 <code>refines: {이전 slug}</code> 자동 기록.
+      </div>
+    </section>
+
+    <!-- 6. 에이전트 -->
+    <section id="agents">
+      <h2><span class="num">06</span>에이전트 카탈로그</h2>
+
+      <div class="cards two">
+        <div class="card">
+          <h4>intent-classifier <span class="card-tag haiku">haiku</span></h4>
+          <p class="role">파이프라인 라우팅. trigger 신호 점수 계산.</p>
+          <div class="io"><span class="label">in:</span> 사용자 메시지<br><span class="label">out:</span> JSON (pipeline + confidence + 후보)</div>
+        </div>
+        <div class="card">
+          <h4>planner <span class="card-tag opus">opus</span></h4>
+          <p class="role">구현 계획 수립. FSD 레이어, API 매핑, 라우트 추정.</p>
+          <div class="io"><span class="label">in:</span> 00_parsed_input + 00_related_context<br><span class="label">out:</span> 00_plan.md</div>
+        </div>
+        <div class="card">
+          <h4>figma-analyzer <span class="card-tag opus">opus</span></h4>
+          <p class="role">Figma 데이터 → 구현 스펙. 노드 위계 트리 + 정량 값 표 + 컴포넌트 매핑.</p>
+          <div class="io"><span class="label">in:</span> Figma URL (via MCP)<br><span class="label">out:</span> 01_figma_spec.md</div>
+        </div>
+        <div class="card">
+          <h4>page-builder <span class="card-tag opus">opus</span></h4>
+          <p class="role">FSD 기반 코드 작성. 모든 파이프라인의 구현/수정 담당.</p>
+          <div class="io"><span class="label">in:</span> 00_plan + 01_figma_spec (or 보고서)<br><span class="label">out:</span> src/app/{route}/**</div>
+        </div>
+        <div class="card">
+          <h4>qa-inspector <span class="card-tag opus">opus</span></h4>
+          <p class="role">3-way diff + visual-diff + 빌드 검증. 모든 파이프라인의 검증 담당.</p>
+          <div class="io"><span class="label">in:</span> 코드 + 01_figma_spec<br><span class="label">out:</span> 02_figma_diff.md + 03_qa_report.md</div>
+        </div>
+        <div class="card">
+          <h4>bug-locator <span class="card-tag opus">opus</span></h4>
+          <p class="role">버그 위치 + 원인 가설 + 수정 범위. patch 파이프라인 첫 단계.</p>
+          <div class="io"><span class="label">in:</span> 00_user_intent (버그 보고)<br><span class="label">out:</span> 00_bug_report.md</div>
+        </div>
+        <div class="card">
+          <h4>diff-analyzer <span class="card-tag opus">opus</span></h4>
+          <p class="role">신규 spec ↔ 기존 코드 6분류 차이. redesign 파이프라인 핵심.</p>
+          <div class="io"><span class="label">in:</span> 01_figma_spec + 기존 src<br><span class="label">out:</span> 01_redesign_diff.md</div>
+        </div>
+        <div class="card">
+          <h4>feedback-parser <span class="card-tag opus">opus</span></h4>
+          <p class="role">피드백 항목화 + 직전 작업 매핑. refine 파이프라인 첫 단계.</p>
+          <div class="io"><span class="label">in:</span> 00_user_intent + 직전 task<br><span class="label">out:</span> 00_feedback.md</div>
+        </div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-title">왜 intent-classifier만 haiku인가</div>
+        단순 분류 작업. 깊은 추론 불필요. 응답 속도와 비용을 우선. 다른 모든 에이전트는 도메인 추론이 필요해 opus.
+      </div>
+    </section>
+
+    <!-- 7. 스킬 -->
+    <section id="skills">
+      <h2><span class="num">07</span>스킬 카탈로그</h2>
+
+      <p>스킬은 "어떻게 하는가"를 담는 절차 문서. 에이전트가 실행 시 Read해서 따른다.</p>
+
+      <div class="cards two">
+        <div class="card">
+          <h4>dev-flow <span class="card-tag">진입</span></h4>
+          <p class="role">모든 개발 요청의 단일 진입점. intent-classify → 파이프라인 실행 → archive까지.</p>
+          <div class="pills"><span class="pill">365줄</span><span class="pill">오케스트레이터</span></div>
+        </div>
+        <div class="card">
+          <h4>figma-to-spec <span class="card-tag">절차</span></h4>
+          <p class="role">Figma → spec 변환. 노드 위계 추출, 정량 값 표, 자기 점검 4항목.</p>
+          <div class="pills"><span class="pill">145줄</span><span class="pill">figma-analyzer 호출</span></div>
+        </div>
+        <div class="card">
+          <h4>fsd-implement <span class="card-tag">절차</span></h4>
+          <p class="role">FSD 패턴 구현. 레이어 분리, codegen 훅 통합, Tailwind 스타일링.</p>
+          <div class="pills"><span class="pill">162줄</span><span class="pill">page-builder 호출</span></div>
+        </div>
+        <div class="card">
+          <h4>quality-check <span class="card-tag">절차</span></h4>
+          <p class="role">빌드 3종 + API 정합성 + 3-way diff + FSD/컨벤션 검사.</p>
+          <div class="pills"><span class="pill">127줄</span><span class="pill">qa-inspector 호출</span></div>
+        </div>
+        <div class="card">
+          <h4>visual-diff <span class="card-tag">절차</span></h4>
+          <p class="role">Playwright/Chrome DevTools + Figma export + pixelmatch 정량 비교.</p>
+          <div class="pills"><span class="pill">124줄</span><span class="pill">qa·diff-analyzer 호출</span></div>
+        </div>
+        <div class="card">
+          <h4>외부 스킬 <span class="card-tag shared">참조</span></h4>
+          <p class="role">auto-commit, vercel-composition-patterns, vercel-react-best-practices, web-design-guidelines.</p>
+          <div class="pills"><span class="pill">상황별 참조</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. 스크립트 -->
+    <section id="scripts">
+      <h2><span class="num">08</span>스크립트</h2>
+
+      <p>Python stdlib + Pillow만 사용. dev-flow가 Bash 툴로 호출한다.</p>
+
+      <table>
+        <thead>
+          <tr><th>스크립트</th><th>역할</th><th>출력</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>parse-input.py</code></td><td>입력 파싱, Figma URL 추출, 슬러그 생성, 워크스페이스 디렉토리 생성</td><td>00_parsed_input.json + 00_user_intent.md</td></tr>
+          <tr><td><code>retrieve-context.py</code></td><td>work-history에서 route/tag/api 매칭으로 관련 task 자동 검색</td><td>00_related_context.md</td></tr>
+          <tr><td><code>gate-spec.py</code></td><td>figma_analyze 후 자기 점검 4항목 자동 게이트</td><td>JSON (passed + failed_checks)</td></tr>
+          <tr><td><code>visual-diff.py</code></td><td>Pillow로 이미지 픽셀 diff %. threshold 초과 시 exit 1</td><td>JSON + diff 시각화 PNG</td></tr>
+          <tr><td><code>track-tokens.py</code></td><td>phase별 토큰/시간 누적 (chars/3.5 best-effort 추정)</td><td>token_usage.json 누적</td></tr>
+          <tr><td><code>summarize-plan.py</code></td><td>00_plan.md → 체크포인트용 컴팩트 JSON 요약</td><td>JSON</td></tr>
+          <tr><td><code>summarize-spec.py</code></td><td>01_figma_spec.md 요약</td><td>JSON</td></tr>
+          <tr><td><code>summarize-qa.py</code></td><td>03_qa_report.md → fail/warn/pass + 빌드 상태</td><td>JSON (fail_count 포함 → fix_loop 평가에 사용)</td></tr>
+          <tr><td><code>archive-workspace.py</code></td><td>_workspace/{slug}/ → work-history/tasks/{slug}/ 이동 + index 갱신</td><td>task.md (평가 메트릭 포함)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 9. 데이터 흐름 -->
+    <section id="data-flow">
+      <h2><span class="num">09</span>데이터 흐름</h2>
+
+      <p>모든 에이전트는 슬러그 워크스페이스를 통해 통신한다. 메인 오케스트레이터는 산출물 본체를 직접 Read하지 않고 summarize-*.py JSON만 받는다.</p>
+
+      <div class="mermaid-wrap">
+<div class="mermaid">
+flowchart TB
+  subgraph WS["_workspace/{date}_{slug}/"]
+    direction TB
+    f1["00_user_intent.md"]
+    f2["00_parsed_input.json"]
+    f3["00_related_context.md"]
+    f4["00_plan.md"]
+    f5["01_figma_spec.md"]
+    f6["02_figma_diff.md"]
+    f7["03_qa_report.md"]
+    f8["token_usage.json"]
+  end
+
+  parse["parse-input.py"] --> f1
+  parse --> f2
+  retrieve["retrieve-context.py"] --> f3
+  planner["📍 planner"] --> f4
+  figma["📍 figma-analyzer"] --> f5
+  qa["📍 qa-inspector"] --> f6
+  qa --> f7
+  track["track-tokens.py"] --> f8
+
+  f4 --> builder["📍 page-builder"]
+  f5 --> builder
+  builder --> code(["src/app/{route}/**"])
+  code --> qa
+  f5 --> qa
+
+  f7 --> summarize["summarize-qa.py"]
+  summarize --> loop_eval{"fix_loop<br/>until 평가"}
+
+  WS --> archive["archive-workspace.py"]
+  archive --> wh["work-history/tasks/{slug}/"]
+
+  classDef agent fill:#3d2f1f,stroke:#f5b800,color:#e8e8eb;
+  classDef script fill:#1f1f23,stroke:#2a2a30,color:#8e8e94;
+  classDef file fill:#1a1a1d,stroke:#2a2a30,color:#e8e8eb;
+  class planner,figma,qa,builder agent;
+  class parse,retrieve,track,archive,summarize script;
+</div>
+      </div>
+
+      <h3>산출물 번호 컨벤션</h3>
+      <table>
+        <thead><tr><th>prefix</th><th>의미</th><th>작성자</th></tr></thead>
+        <tbody>
+          <tr><td><code>00_*</code></td><td>입력 / 계획 / 컨텍스트</td><td>parse-input · retrieve-context · planner · feedback-parser · bug-locator</td></tr>
+          <tr><td><code>01_*</code></td><td>분석 / 스펙</td><td>figma-analyzer · diff-analyzer</td></tr>
+          <tr><td><code>02_*</code></td><td>검증 보조</td><td>qa-inspector (3-way diff)</td></tr>
+          <tr><td><code>03_*</code></td><td>최종 검증 결과</td><td>qa-inspector</td></tr>
+          <tr><td><code>task.md</code></td><td>완료 작업 기록 (frontmatter + 본문)</td><td>archive-workspace</td></tr>
+          <tr><td><code>token_usage.json</code></td><td>phase별 토큰/시간 누적</td><td>track-tokens</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 10. 평가 메트릭 -->
+    <section id="evaluation">
+      <h2><span class="num">10</span>평가 메트릭</h2>
+
+      <p>운영 후 메타 분석을 위해 task.md frontmatter에 5개 평가 필드를 수집한다.</p>
+
+      <table>
+        <thead><tr><th>필드</th><th>의미</th><th>분석 용도</th></tr></thead>
+        <tbody>
+          <tr><td><code>classified_pipeline</code></td><td>intent-classifier가 처음 분류한 값</td><td>final과 비교 → 분류 정확도</td></tr>
+          <tr><td><code>pipeline_correctness</code></td><td><code>ok | user_overridden | reclassified</code></td><td>사용자 개입 빈도</td></tr>
+          <tr><td><code>fix_iterations</code></td><td>fix_loop 반복 횟수 (0이면 첫 qa 통과)</td><td>품질 신호 — 높으면 spec/구현 문제</td></tr>
+          <tr><td><code>visual_diff_max_pct</code></td><td>viewport별 visual diff 최대 % (미수행 null)</td><td>시각 충실도</td></tr>
+          <tr><td><code>total_tokens_est</code></td><td>token_usage.json summary 인용</td><td>비용/성능 분석</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout note">
+        <div class="callout-title">메타 하네스 트리거 조건 (미래 시점)</div>
+        다음 중 하나가 충족되면 그때 평가 자동화 도구를 만든다:
+        <ul>
+          <li>work-history task 10건 이상 누적</li>
+          <li>같은 문제가 3건 이상 반복 발생</li>
+          <li>분기 이상 경과 (drift 정기 점검)</li>
+        </ul>
+        지금은 데이터 수집만. 가설 기반 메트릭 과적합 회피.
+      </div>
+    </section>
+
+    <!-- 11. 운영 가이드 -->
+    <section id="ops">
+      <h2><span class="num">11</span>운영 가이드</h2>
+
+      <h3>전제 조건</h3>
+      <table>
+        <thead><tr><th>항목</th><th>상태</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>Python 3.11+</td><td>✅ 확인됨 (3.14)</td><td>stdlib만 사용</td></tr>
+          <tr><td>Pillow</td><td>✅ 확인됨</td><td>visual-diff.py 의존</td></tr>
+          <tr><td>chrome-devtools MCP</td><td>✅ 글로벌 설치</td><td>visual-diff 폴백</td></tr>
+          <tr><td>Framelink_Figma_MCP</td><td>⚠️ 설치 필요</td><td>figma-analyzer / visual-diff 필수</td></tr>
+          <tr><td>Playwright MCP</td><td>⚠️ 설치 필요</td><td>visual-diff 권장</td></tr>
+          <tr><td>Next.js / pnpm 프로젝트</td><td>⚠️ 미구성</td><td>실 코드 작업 시작 시점에</td></tr>
+          <tr><td><code>.gitignore</code>에 <code>_workspace/</code></td><td>⚠️ 추가 권장</td><td>진행 중 작업물 비추적</td></tr>
+        </tbody>
+      </table>
+
+      <h3>MCP 설치</h3>
+<pre><code># Gunban 디렉토리에서
+claude mcp add Framelink_Figma_MCP &lt;Figma 토큰&gt;
+claude mcp add playwright &lt;설정&gt;</code></pre>
+
+      <h3>일상 사용 흐름</h3>
+      <ol>
+        <li>사용자가 자연어로 요청 ("메인 검색 페이지 만들어줘 + Figma URL")</li>
+        <li>Claude가 <code>dev-flow</code> 스킬을 자동 트리거</li>
+        <li>intent-classifier가 파이프라인 결정 → 사용자 한 줄 확인</li>
+        <li>phase 순차 실행 + 체크포인트마다 사용자 승인</li>
+        <li>qa 통과 후 archive 여부 선택 (archive / 유지 / 삭제)</li>
+        <li>최종 보고서로 산출물 + 토큰/시간 확인</li>
+      </ol>
+
+      <h3>흔한 실패 → 대응</h3>
+      <table>
+        <thead><tr><th>상황</th><th>대응</th></tr></thead>
+        <tbody>
+          <tr><td>route 추정 신뢰도 낮음</td><td>체크포인트 1에서 사용자 직접 입력</td></tr>
+          <tr><td>backpressure 실패</td><td>1회 자기 수정 → 그래도 실패 시 fix_loop 진입</td></tr>
+          <tr><td>fix_loop max_iter 초과</td><td>사용자 보고 + 종료. 남은 FAIL 직접 처리</td></tr>
+          <tr><td>diff-analyzer가 빈 라우트 발견</td><td>redesign 중단 + greenfield 재시작 안내</td></tr>
+          <tr><td>refine 직전 슬러그 모호</td><td>feedback-parser가 후보 제시 → 사용자 선택</td></tr>
+          <tr><td>visual-diff dev 서버 미가동</td><td>자동 생략 + 보고서 표기</td></tr>
+        </tbody>
+      </table>
+
+      <h3>향후 개선 (v3 후보)</h3>
+      <ul>
+        <li>실 운영 10건 후 intent-classifier 분류 정확도 측정</li>
+        <li>dev-flow를 references/로 분리해 본문 200줄 이하로 축소</li>
+        <li>메타 하네스 (harness-evaluator 에이전트 자동 실행)</li>
+        <li>토큰 추적 정밀화 (Claude Code Task 툴이 usage 노출 시)</li>
+        <li>병렬 phase 지원 (현재 순차 전용)</li>
+      </ul>
+    </section>
+
+    <div class="footnotes">
+      <div class="footnotes-title">각주</div>
+      <ol>
+        <li id="fn1">
+          Task 툴(Claude Code의 서브에이전트 호출 메커니즘) 기반 설계 배경 — GeekNews:
+          <a class="ext" href="https://news.hada.io/topic?id=29494" target="_blank" rel="noopener">https://news.hada.io/topic?id=29494</a>
+          <a href="#fnref1" style="margin-left: 6px; color: var(--text-mute);">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <div class="footer">
+      Gunban Harness v2.1 · 평가 v2 · 갱신 2026-05-14<br>
+      구조 자세: <code>.claude/README.md</code> · 파이프라인 정의: <code>.claude/pipelines/*.yaml</code> · 평가 보고서: 본 문서 §10
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Mermaid init — 다크 테마
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#1f1f23',
+      primaryTextColor: '#e8e8eb',
+      primaryBorderColor: '#f5b800',
+      lineColor: '#5c5c63',
+      secondaryColor: '#18181b',
+      tertiaryColor: '#0e0e10',
+      background: '#0e0e10',
+      mainBkg: '#1f1f23',
+      secondBkg: '#18181b',
+      textColor: '#e8e8eb',
+      labelTextColor: '#e8e8eb',
+      nodeTextColor: '#e8e8eb',
+      edgeLabelBackground: '#18181b',
+      fontFamily: 'ui-monospace, monospace',
+      fontSize: '13px'
+    },
+    flowchart: { curve: 'basis', padding: 14, nodeSpacing: 40, rankSpacing: 50 }
+  });
+
+  // TOC active highlight on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const tocLinks = document.querySelectorAll('#toc-list a');
+  function updateActive() {
+    let active = '';
+    const scrollY = window.scrollY + 120;
+    sections.forEach(s => {
+      if (s.offsetTop <= scrollY) active = s.id;
+    });
+    tocLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+    });
+  }
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+</script>
+
+</body>
+</html>
