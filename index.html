@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gunban 하네스 구조 — v2</title>
+<title>Gunban 하네스 구조 — v2.2</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <style>
   :root {
@@ -160,14 +160,15 @@
   <main class="main">
 
     <div class="header">
-      <h1>Gunban 하네스 구조<span class="v">v2.1</span></h1>
-      <div class="subtitle">코드 작업 요청을 4종 파이프라인으로 분류·실행하는 멀티 에이전트 하네스</div>
+      <h1>Gunban 하네스 구조<span class="v">v2.2</span></h1>
+      <div class="subtitle">Flutter 코드 작업 요청을 4종 파이프라인으로 분류·실행하는 멀티 에이전트 하네스</div>
       <div class="meta-row">
         <span class="meta">에이전트 <strong>8</strong></span>
-        <span class="meta">스킬 <strong>5</strong></span>
+        <span class="meta">스킬 <strong>7</strong></span>
         <span class="meta">파이프라인 <strong>4</strong></span>
-        <span class="meta">스크립트 <strong>9</strong></span>
-        <span class="meta">최종 갱신 <strong>2026-05-14</strong></span>
+        <span class="meta">스크립트 <strong>11</strong></span>
+        <span class="meta">work-history <strong>2건</strong></span>
+        <span class="meta">최종 갱신 <strong>2026-05-19</strong></span>
       </div>
     </div>
 
@@ -175,10 +176,11 @@
     <section id="overview">
       <h2><span class="num">01</span>개요</h2>
       <p>
-        Gunban 하네스는 프론트엔드 개발 요청의 단일 진입점 <code>dev-flow</code> 스킬과,
+        Gunban 하네스는 Flutter 개발 요청의 단일 진입점 <code>dev-flow</code> 스킬과,
         그 아래 의도를 4종 파이프라인으로 분류·실행하는 멀티 에이전트 시스템이다.
         각 작업은 슬러그 기반 워크스페이스(<code>_workspace/{date}_{slug}/</code>)에 격리되어 동시 진행이 가능하며,
         모든 산출물은 작업 종료 시 <code>work-history/</code>로 영구 보존된다.
+        스택: Flutter + Riverpod + go_router + dart-dio-next codegen + Style Dictionary 토큰 + alchemist 골든 + patrol 시각 검증.
       </p>
 
       <h3>핵심 설계 원칙</h3>
@@ -200,8 +202,8 @@
           <p class="role"><code>retrieve-context.py</code>가 prepare에서 관련 이력을 자동 검색.</p>
         </div>
         <div class="card">
-          <h4>5. 시각 검증 자동화</h4>
-          <p class="role">Playwright + Figma export + pixelmatch로 정량 diff. LLM의 픽셀 추측 X.</p>
+          <h4>5. 3-Tier 시각 검증</h4>
+          <p class="role">토큰 sync + alchemist 골든 + patrol/시뮬레이터 캡처 ↔ Figma export 픽셀 diff. LLM의 픽셀 추측 X.</p>
         </div>
         <div class="card">
           <h4>6. 승인 게이트 + 예산 가드</h4>
@@ -258,31 +260,34 @@ flowchart TB
 │   ├── bug-locator.md           <span class="cmt"># patch</span>
 │   ├── diff-analyzer.md         <span class="cmt"># redesign</span>
 │   └── feedback-parser.md       <span class="cmt"># refine</span>
-├── <span class="name">skills/</span>
+├── <span class="name">skills/</span>                            <span class="cmt"># 7 내부 스킬</span>
 │   ├── <span class="new">dev-flow/</span>                       <span class="cmt"># 진입 오케스트레이터</span>
 │   ├── figma-to-spec/
-│   ├── fsd-implement/
+│   ├── fsd-implement/                <span class="cmt"># Flutter + Riverpod + go_router</span>
+│   ├── flutter-best-practices/       <span class="cmt"># 리빌드 최적화 / AsyncValue 패턴</span>
 │   ├── quality-check/
 │   ├── visual-diff/
-│   └── (외부: auto-commit, vercel-*, web-design-guidelines)
+│   └── auto-commit/
 ├── <span class="name">pipelines/</span>                         <span class="cmt"># 4종 YAML</span>
 │   ├── greenfield.yaml
 │   ├── patch.yaml
 │   ├── redesign.yaml
 │   └── refine.yaml
-├── <span class="name">scripts/</span>                           <span class="cmt"># 9개 Python (stdlib + Pillow)</span>
+├── <span class="name">scripts/</span>                           <span class="cmt"># 11개 (Python stdlib + Pillow + Bash)</span>
 │   ├── parse-input.py
 │   ├── retrieve-context.py
 │   ├── archive-workspace.py
 │   ├── gate-spec.py
 │   ├── track-tokens.py
 │   ├── visual-diff.py
-│   └── summarize-{plan,spec,qa}.py
+│   ├── summarize-{plan,spec,qa}.py
+│   ├── <span class="new">flutter-screenshot.sh</span>          <span class="cmt"># patrol/simctl 캡처 (INITIAL_ROUTE dart-define)</span>
+│   └── <span class="new">sync-docs.sh</span>                   <span class="cmt"># 본 문서 deploy 미러 동기화</span>
 └── <span class="name">docs/</span>
     ├── harness-structure.html       <span class="cmt"># 본 문서</span>
     └── work-history/
         ├── index.md                 <span class="cmt"># 경량 검색 인덱스</span>
-        ├── tasks/{date}_{slug}/     <span class="cmt"># 영구 보존</span>
+        ├── tasks/{date}_{slug}/     <span class="cmt"># 영구 보존 (현재 2건)</span>
         └── decisions/D-NNN_*.md
 
 <span class="name">_workspace/</span>                              <span class="cmt"># 진행 중 작업 (gitignore)</span>
@@ -450,7 +455,7 @@ flowchart LR
 
       <div class="callout">
         <div class="callout-title">예산 / 산출물</div>
-        총 토큰 1.5M · 총 시간 30분 · 산출물: <code>00_plan.md</code> · <code>01_figma_spec.md</code> · <code>03_qa_report.md</code> · 코드 <code>src/app/{route}/**</code>
+        총 토큰 1.5M · 총 시간 30분 · 산출물: <code>00_plan.md</code> · <code>01_figma_spec.md</code> · <code>03_qa_report.md</code> · 코드 <code>lib/app/{route}/**</code>
       </div>
 
       <!-- patch -->
@@ -583,8 +588,8 @@ flowchart LR
         </div>
         <div class="card">
           <h4>page-builder <span class="card-tag opus">opus</span></h4>
-          <p class="role">FSD 기반 코드 작성. 모든 파이프라인의 구현/수정 담당.</p>
-          <div class="io"><span class="label">in:</span> 00_plan + 01_figma_spec (or 보고서)<br><span class="label">out:</span> src/app/{route}/**</div>
+          <p class="role">FSD-Flutter 기반 코드 작성 (Riverpod + go_router + codegen 통합). 모든 파이프라인의 구현/수정 담당.</p>
+          <div class="io"><span class="label">in:</span> 00_plan + 01_figma_spec (or 보고서)<br><span class="label">out:</span> lib/app/{route}/**</div>
         </div>
         <div class="card">
           <h4>qa-inspector <span class="card-tag opus">opus</span></h4>
@@ -624,32 +629,37 @@ flowchart LR
         <div class="card">
           <h4>dev-flow <span class="card-tag">진입</span></h4>
           <p class="role">모든 개발 요청의 단일 진입점. intent-classify → 파이프라인 실행 → archive까지.</p>
-          <div class="pills"><span class="pill">365줄</span><span class="pill">오케스트레이터</span></div>
+          <div class="pills"><span class="pill">362줄</span><span class="pill">오케스트레이터</span></div>
         </div>
         <div class="card">
           <h4>figma-to-spec <span class="card-tag">절차</span></h4>
-          <p class="role">Figma → spec 변환. 노드 위계 추출, 정량 값 표, 자기 점검 4항목.</p>
-          <div class="pills"><span class="pill">145줄</span><span class="pill">figma-analyzer 호출</span></div>
+          <p class="role">Figma → spec 변환. 노드 위계 추출, 정량 값 표, shared 위젯 매핑, 자기 점검 4항목.</p>
+          <div class="pills"><span class="pill">194줄</span><span class="pill">figma-analyzer 호출</span></div>
         </div>
         <div class="card">
           <h4>fsd-implement <span class="card-tag">절차</span></h4>
-          <p class="role">FSD 패턴 구현. 레이어 분리, codegen 훅 통합, Tailwind 스타일링.</p>
-          <div class="pills"><span class="pill">162줄</span><span class="pill">page-builder 호출</span></div>
+          <p class="role">FSD-Flutter 패턴 구현. 레이어 분리, ConsumerWidget/AsyncNotifier, dart-dio-next codegen 통합, Tokens.* 스타일링.</p>
+          <div class="pills"><span class="pill">372줄</span><span class="pill">page-builder 호출</span></div>
+        </div>
+        <div class="card">
+          <h4>flutter-best-practices <span class="card-tag">절차</span></h4>
+          <p class="role">Riverpod 패턴 + 위젯 리빌드 최소화 + const 강제 + ListView.builder/RepaintBoundary + dispose 누락 방지.</p>
+          <div class="pills"><span class="pill">371줄</span><span class="pill">page-builder·qa 참조</span></div>
         </div>
         <div class="card">
           <h4>quality-check <span class="card-tag">절차</span></h4>
-          <p class="role">빌드 3종 + API 정합성 + 3-way diff + FSD/컨벤션 검사.</p>
-          <div class="pills"><span class="pill">127줄</span><span class="pill">qa-inspector 호출</span></div>
+          <p class="role">flutter analyze + dart format + flutter test + alchemist 골든 + API 정합성 + 3-way diff + FSD/컨벤션 검사.</p>
+          <div class="pills"><span class="pill">188줄</span><span class="pill">qa-inspector 호출</span></div>
         </div>
         <div class="card">
           <h4>visual-diff <span class="card-tag">절차</span></h4>
-          <p class="role">Playwright/Chrome DevTools + Figma export + pixelmatch 정량 비교.</p>
-          <div class="pills"><span class="pill">124줄</span><span class="pill">qa·diff-analyzer 호출</span></div>
+          <p class="role">patrol/simctl(adb) 캡처 + Framelink Figma export + Pillow ImageChops 정량 비교 (threshold 5%).</p>
+          <div class="pills"><span class="pill">185줄</span><span class="pill">qa·diff-analyzer 호출</span></div>
         </div>
         <div class="card">
-          <h4>외부 스킬 <span class="card-tag shared">참조</span></h4>
-          <p class="role">auto-commit, vercel-composition-patterns, vercel-react-best-practices, web-design-guidelines.</p>
-          <div class="pills"><span class="pill">상황별 참조</span></div>
+          <h4>auto-commit <span class="card-tag">절차</span></h4>
+          <p class="role">변경사항 분석 → 작업 단위 분할 → 컨벤션 메시지 생성 + Co-Authored-By 미사용 정책.</p>
+          <div class="pills"><span class="pill">115줄</span><span class="pill">archive 후 선택 호출</span></div>
         </div>
       </div>
     </section>
@@ -668,12 +678,14 @@ flowchart LR
           <tr><td><code>parse-input.py</code></td><td>입력 파싱, Figma URL 추출, 슬러그 생성, 워크스페이스 디렉토리 생성</td><td>00_parsed_input.json + 00_user_intent.md</td></tr>
           <tr><td><code>retrieve-context.py</code></td><td>work-history에서 route/tag/api 매칭으로 관련 task 자동 검색</td><td>00_related_context.md</td></tr>
           <tr><td><code>gate-spec.py</code></td><td>figma_analyze 후 자기 점검 4항목 자동 게이트</td><td>JSON (passed + failed_checks)</td></tr>
-          <tr><td><code>visual-diff.py</code></td><td>Pillow로 이미지 픽셀 diff %. threshold 초과 시 exit 1</td><td>JSON + diff 시각화 PNG</td></tr>
+          <tr><td><code>visual-diff.py</code></td><td>Pillow ImageChops로 이미지 픽셀 diff %. threshold 초과 시 exit 1</td><td>JSON + diff 시각화 PNG</td></tr>
           <tr><td><code>track-tokens.py</code></td><td>phase별 토큰/시간 누적 (chars/3.5 best-effort 추정)</td><td>token_usage.json 누적</td></tr>
           <tr><td><code>summarize-plan.py</code></td><td>00_plan.md → 체크포인트용 컴팩트 JSON 요약</td><td>JSON</td></tr>
           <tr><td><code>summarize-spec.py</code></td><td>01_figma_spec.md 요약</td><td>JSON</td></tr>
           <tr><td><code>summarize-qa.py</code></td><td>03_qa_report.md → fail/warn/pass + 빌드 상태</td><td>JSON (fail_count 포함 → fix_loop 평가에 사용)</td></tr>
           <tr><td><code>archive-workspace.py</code></td><td>_workspace/{slug}/ → work-history/tasks/{slug}/ 이동 + index 갱신</td><td>task.md (평가 메트릭 포함)</td></tr>
+          <tr><td><code>flutter-screenshot.sh</code></td><td>iOS/Android 시뮬레이터에 <code>--dart-define=INITIAL_ROUTE</code>로 라우트 진입 + simctl/adb 네이티브 캡처</td><td>_workspace/{slug}/visual/actual_*.png</td></tr>
+          <tr><td><code>sync-docs.sh</code></td><td>본 문서를 deploy 미러 repo(<code>gunban-fe-harness-docs</code>)로 복사 + commit/push</td><td>GitHub Pages 갱신</td></tr>
         </tbody>
       </table>
     </section>
@@ -710,7 +722,7 @@ flowchart TB
 
   f4 --> builder["📍 page-builder"]
   f5 --> builder
-  builder --> code(["src/app/{route}/**"])
+  builder --> code(["lib/app/{route}/**"])
   code --> qa
   f5 --> qa
 
@@ -781,18 +793,25 @@ flowchart TB
         <tbody>
           <tr><td>Python 3.11+</td><td>✅ 확인됨 (3.14)</td><td>stdlib만 사용</td></tr>
           <tr><td>Pillow</td><td>✅ 확인됨</td><td>visual-diff.py 의존</td></tr>
-          <tr><td>chrome-devtools MCP</td><td>✅ 글로벌 설치</td><td>visual-diff 폴백</td></tr>
-          <tr><td>Framelink_Figma_MCP</td><td>⚠️ 설치 필요</td><td>figma-analyzer / visual-diff 필수</td></tr>
-          <tr><td>Playwright MCP</td><td>⚠️ 설치 필요</td><td>visual-diff 권장</td></tr>
-          <tr><td>Next.js / pnpm 프로젝트</td><td>⚠️ 미구성</td><td>실 코드 작업 시작 시점에</td></tr>
-          <tr><td><code>.gitignore</code>에 <code>_workspace/</code></td><td>⚠️ 추가 권장</td><td>진행 중 작업물 비추적</td></tr>
+          <tr><td>Flutter SDK (latest stable, Dart 3.x)</td><td>✅ 구성됨</td><td>build_runner / l10n / patrol 의존</td></tr>
+          <tr><td>patrol_cli</td><td>✅ 구성됨</td><td><code>dart pub global activate patrol_cli</code></td></tr>
+          <tr><td>iOS Simulator / Android Emulator</td><td>✅ 구성됨</td><td>flutter-screenshot.sh 캡처용 (simctl/adb)</td></tr>
+          <tr><td>pnpm 또는 npm</td><td>✅ 구성됨</td><td>Style Dictionary, openapi-generator-cli (<code>tools/</code>)</td></tr>
+          <tr><td>Framelink_Figma_MCP</td><td>✅ 설치됨</td><td>figma-analyzer / visual-diff 필수</td></tr>
+          <tr><td><code>.gitignore</code>에 <code>_workspace/</code></td><td>✅ 적용됨</td><td>진행 중 작업물 비추적</td></tr>
         </tbody>
       </table>
 
+      <div class="callout note">
+        <div class="callout-title">시각 검증 캡처 경로 변경 (v2.2)</div>
+        v2.1에서 검토된 Playwright/Chrome DevTools MCP는 Flutter 네이티브 화면 캡처에 부적합해 제거됨.
+        대신 <code>flutter-screenshot.sh</code>가 <code>--dart-define=INITIAL_ROUTE</code>로 라우트 진입 → <code>xcrun simctl io</code> 또는 <code>adb exec-out screencap</code>으로 네이티브 캡처.
+        Tier 3 시각 검증 인프라 검증은 <code>2026-05-18_patrol-visual-infra</code> 슬러그에서 완료 (해상도 정렬은 후속 백로그).
+      </div>
+
       <h3>MCP 설치</h3>
 <pre><code># Gunban 디렉토리에서
-claude mcp add Framelink_Figma_MCP &lt;Figma 토큰&gt;
-claude mcp add playwright &lt;설정&gt;</code></pre>
+claude mcp add Framelink_Figma_MCP &lt;Figma 토큰&gt;</code></pre>
 
       <h3>일상 사용 흐름</h3>
       <ol>
@@ -813,7 +832,8 @@ claude mcp add playwright &lt;설정&gt;</code></pre>
           <tr><td>fix_loop max_iter 초과</td><td>사용자 보고 + 종료. 남은 FAIL 직접 처리</td></tr>
           <tr><td>diff-analyzer가 빈 라우트 발견</td><td>redesign 중단 + greenfield 재시작 안내</td></tr>
           <tr><td>refine 직전 슬러그 모호</td><td>feedback-parser가 후보 제시 → 사용자 선택</td></tr>
-          <tr><td>visual-diff dev 서버 미가동</td><td>자동 생략 + 보고서 표기</td></tr>
+          <tr><td>visual-diff 시뮬레이터 미부팅</td><td>flutter-screenshot.sh가 exit 2 반환 → 자동 생략 + 보고서 표기</td></tr>
+          <tr><td>ref/actual 캔버스 크기 불일치</td><td>visual-diff.py가 패딩 후 비교 → diff% 과대 추정 가능, Figma export 디바이스 프레임 정렬 필요</td></tr>
         </tbody>
       </table>
 
@@ -839,8 +859,9 @@ claude mcp add playwright &lt;설정&gt;</code></pre>
     </div>
 
     <div class="footer">
-      Gunban Harness v2.1 · 평가 v2 · 갱신 2026-05-14<br>
-      구조 자세: <code>.claude/README.md</code> · 파이프라인 정의: <code>.claude/pipelines/*.yaml</code> · 평가 보고서: 본 문서 §10
+      Gunban Harness v2.2 · 평가 v2 · 갱신 2026-05-19<br>
+      구조 자세: <code>.claude/README.md</code> · 파이프라인 정의: <code>.claude/pipelines/*.yaml</code> · 평가 보고서: 본 문서 §10<br>
+      정본: <code>Gunban/.claude/docs/harness-structure.html</code> · 미러: <a href="https://github.com/Lee-Young-Jae/gunban-fe-harness-docs" target="_blank" rel="noopener">gunban-fe-harness-docs</a> · 동기화: <code>.claude/scripts/sync-docs.sh</code>
     </div>
 
   </main>
